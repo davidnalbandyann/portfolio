@@ -133,13 +133,7 @@
 
   /* ---------- nav ---------- */
   .nav {
-    position: fixed; top: 0; left: 0; right: 0;
-    z-index: 100;
-    padding: 18px 32px;
-    display: flex; align-items: center; justify-content: space-between;
-    backdrop-filter: blur(14px);
-    background: linear-gradient(180deg, rgba(7,10,20,.85), rgba(7,10,20,.35));
-    border-bottom: 1px solid rgba(232, 211, 158, 0.06);
+    display: none;
   }
   .nav-mark {
     font-family: 'Fraunces', serif;
@@ -183,6 +177,15 @@
   }
   .skip-link:focus { left: 16px; top: 16px; z-index: 200; }
   @media (max-width: 720px) {
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      backdrop-filter: blur(14px);
+      background: rgba(7, 10, 20, 0.85);
+      border-bottom: 1px solid rgba(232, 211, 158, 0.08);
+    }
     .nav-links {
       position: absolute;
       top: 100%; left: 0; right: 0;
@@ -419,7 +422,7 @@
 
   /* ---------- about ---------- */
   .about {
-    background: var(--canvas);
+    background: transparent;
   }
   .about-grid {
     display: grid;
@@ -475,7 +478,8 @@
     border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
     padding: 28px 0;
-    background: var(--canvas-2);
+    background: rgba(13, 19, 34, 0.45);
+    backdrop-filter: blur(8px);
   }
   .marquee-track {
     display: flex; gap: 60px;
@@ -503,7 +507,7 @@
   }
 
   /* ---------- selected work ---------- */
-  .work { background: var(--canvas-2); }
+  .work { background: transparent; }
   .work-list {
     display: grid;
     gap: 28px;
@@ -627,7 +631,7 @@
 
   /* ---------- portrait ---------- */
   .portrait {
-    background: var(--canvas-2);
+    background: transparent;
     border-top: 1px solid rgba(255,255,255,0.04);
     border-bottom: 1px solid rgba(255,255,255,0.04);
   }
@@ -728,7 +732,7 @@
 
   /* ---------- deployed ---------- */
   .deployed {
-    background: var(--canvas);
+    background: transparent;
   }
   .deployed-grid {
     display: grid;
@@ -739,7 +743,8 @@
   .dep-card {
     position: relative;
     padding: 36px 32px 32px;
-    background: var(--surface);
+    background: rgba(14, 20, 36, 0.65);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--line);
     border-radius: 4px;
     overflow: hidden;
@@ -828,7 +833,7 @@
   .dep-card:hover .dep-media-frame { border-color: rgba(232, 211, 158, 0.25); }
 
   /* ---------- experience ---------- */
-  .experience { background: var(--canvas-2); }
+  .experience { background: transparent; }
   .xp-list { display: grid; gap: 0; }
   .xp-row {
     display: grid;
@@ -876,7 +881,7 @@
   @media (max-width: 900px) { .xp-loc { justify-self: start; text-align: left; } }
 
   /* ---------- skills ---------- */
-  .skills { background: var(--canvas); }
+  .skills { background: transparent; }
   .skills-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -889,7 +894,8 @@
     padding: 36px 28px 32px;
     border-right: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
-    background: var(--canvas);
+    background: rgba(14, 20, 36, 0.55);
+    backdrop-filter: blur(10px);
     transition: background .35s;
   }
   .skill-col:hover { background: var(--surface); }
@@ -925,7 +931,7 @@
   }
 
   /* ---------- education ---------- */
-  .education { background: var(--canvas-2); }
+  .education { background: transparent; }
   .edu-list { display: grid; gap: 0; }
   .edu-row {
     display: grid;
@@ -976,7 +982,7 @@
 
   /* ---------- contact ---------- */
   .contact {
-    background: var(--canvas);
+    background: transparent;
     text-align: center;
     position: relative;
     overflow: hidden;
@@ -1062,7 +1068,7 @@
   footer {
     padding: 40px 0 32px;
     border-top: 1px solid var(--line);
-    background: var(--canvas);
+    background: transparent;
   }
   .foot {
     display: flex; justify-content: space-between; align-items: center;
@@ -2259,19 +2265,24 @@
       ring1.rotation.z = time * 0.15;
       ring2.rotation.z = -time * 0.2;
 
-      // 3. Scroll-Driven 3D Camera & Position Morphing
-      const targetCamZ = 8 - scrollProgress * 2.5;
-      const targetCamY = -scrollProgress * 2.0;
-      const targetCamRotZ = scrollProgress * 0.4;
+      // 3. Smooth 3D Cursor Tracking (Core & Rings follow user cursor everywhere)
+      const targetCoreX = mouseX * 2.8;
+      const targetCoreY = mouseY * 2.0;
 
-      camera.position.z += (targetCamZ - camera.position.z) * 0.05;
-      camera.position.y += (targetCamY - camera.position.y) * 0.05;
-      camera.rotation.z += (targetCamRotZ - camera.rotation.z) * 0.05;
+      torusKnot.position.x += (targetCoreX - torusKnot.position.x) * 0.06;
+      torusKnot.position.y += (targetCoreY - torusKnot.position.y) * 0.06;
 
-      // Shift Torus Knot position based on scroll
-      const targetTorusX = Math.sin(scrollProgress * Math.PI * 2) * 1.8;
-      torusKnot.position.x += (targetTorusX - torusKnot.position.x) * 0.05;
       innerIco.position.x = torusKnot.position.x;
+      innerIco.position.y = torusKnot.position.y;
+
+      ring1.position.x = torusKnot.position.x;
+      ring1.position.y = torusKnot.position.y;
+
+      ring2.position.x = torusKnot.position.x;
+      ring2.position.y = torusKnot.position.y;
+
+      particleSystem.position.x += (targetCoreX * 0.35 - particleSystem.position.x) * 0.04;
+      particleSystem.position.y += (targetCoreY * 0.35 - particleSystem.position.y) * 0.04;
 
       renderer.render(scene, camera);
     }
