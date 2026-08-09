@@ -98,6 +98,9 @@
     .marquee-track { animation: none !important; transform: none !important; }
     .hero-eyebrow .pulse { animation: none !important; }
     .scroll-cue .line::after { animation: none !important; }
+    #cinema-canvas { display: none !important; }
+    .rec-dot { animation: none !important; }
+    .telemetry-drawer { transition: none !important; }
   }
 
   ::selection { background: var(--gold); color: var(--canvas); }
@@ -254,27 +257,20 @@
     margin-bottom: 28px;
   }
   .hero-eyebrow .pulse {
-    width: 8px; height: 8px; border-radius: 50%;
+    width: 6px; height: 6px; border-radius: 50%;
     background: var(--gold);
-    box-shadow: 0 0 0 0 var(--gold);
-    animation: pulse 2.4s var(--ease-out) infinite;
-  }
-  @keyframes pulse {
-    0%   { box-shadow: 0 0 0 0 rgba(232, 211, 158, 0.6); }
-    70%  { box-shadow: 0 0 0 14px rgba(232, 211, 158, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(232, 211, 158, 0); }
   }
 
   .hero-title {
     font-family: 'Fraunces', serif;
     font-weight: 300;
     font-size: clamp(56px, 9vw, 156px);
-    line-height: 0.96;
+    line-height: 1.2;
     letter-spacing: -0.035em;
     margin: 0 0 28px;
     color: var(--ink);
   }
-  .hero-title .row { display: block; overflow: hidden; }
+  .hero-title .row { display: block; overflow: hidden; padding: 0.08em 0; margin: -0.08em 0; }
   .hero-title .row > span { display: inline-block; }
   .hero-title em {
     font-style: italic;
@@ -1082,11 +1078,216 @@
 
   /* ---------- reveal initial state (GSAP overrides) ---------- */
   .reveal { opacity: 0; transform: translateY(40px); filter: blur(6px); }
-  .reveal-line { display: block; overflow: hidden; }
-  .reveal-line > span { display: inline-block; transform: translateY(110%); }
+  /* ---------- cinema of code enhancements ---------- */
+  #cinema-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.65;
+    mix-blend-mode: screen;
+  }
+
+  /* slate telemetry hud */
+  .slate-hud {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    background: rgba(14, 20, 36, 0.65);
+    border: 1px solid var(--line-2);
+    padding: 6px 14px;
+    border-radius: 999px;
+    backdrop-filter: blur(8px);
+    margin-bottom: 24px;
+  }
+  .rec-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #e54d42;
+    box-shadow: 0 0 6px #e54d42;
+  }
+  .slate-time { color: var(--gold); }
+  .slate-sep { color: var(--line-2); }
+
+  /* viewfinder scene reel tracker */
+  .viewfinder-reel {
+    position: fixed;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    pointer-events: auto;
+  }
+  @media (max-width: 1120px) {
+    .viewfinder-reel { display: none; }
+  }
+  .vf-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--ink-3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: color 0.3s var(--ease-out);
+    text-decoration: none;
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+  .vf-item .vf-bar {
+    width: 14px;
+    height: 1px;
+    background: var(--line-2);
+    transition: width 0.3s var(--ease-out), background 0.3s;
+  }
+  .vf-item .vf-label {
+    opacity: 0;
+    transform: translateX(8px);
+    transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out);
+    pointer-events: none;
+    white-space: nowrap;
+    background: rgba(7, 10, 20, 0.9);
+    padding: 2px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--line-2);
+  }
+  .vf-item:hover { color: var(--gold); }
+  .vf-item:hover .vf-bar { width: 24px; background: var(--gold); }
+  .vf-item:hover .vf-label { opacity: 1; transform: translateX(0); }
+  .vf-item.active { color: var(--gold); }
+  .vf-item.active .vf-bar { width: 32px; background: var(--gold); box-shadow: 0 0 8px var(--gold-glow); }
+  .vf-item.active .vf-label { opacity: 0.85; transform: translateX(0); color: var(--ink); }
+
+  /* card spotlight gradient overlay & 3d tilt */
+  .dep-card, .work-card, .skill-col, .portrait-frame {
+    --spotlight-x: 50%;
+    --spotlight-y: 50%;
+    --spotlight-opacity: 0;
+    position: relative;
+  }
+  .dep-card::after, .work-card::after, .skill-col::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(400px circle at var(--spotlight-x) var(--spotlight-y), rgba(232, 211, 158, 0.12), transparent 70%);
+    opacity: var(--spotlight-opacity);
+    transition: opacity 0.4s var(--ease-out);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* telemetry snippet toggle button & drawer */
+  .telemetry-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 6px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--cyan);
+    background: rgba(127, 200, 216, 0.06);
+    border: 1px solid rgba(127, 200, 216, 0.25);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s, border-color 0.3s, color 0.3s;
+  }
+  .telemetry-btn:hover {
+    background: rgba(232, 211, 158, 0.12);
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .telemetry-btn svg {
+    width: 12px;
+    height: 12px;
+    transition: transform 0.3s var(--ease-out);
+  }
+  .telemetry-btn.is-active svg {
+    transform: rotate(180deg);
+  }
+  .telemetry-drawer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s var(--ease-soft), margin-top 0.3s;
+    background: #050810;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    margin-top: 0;
+  }
+  .telemetry-drawer.is-open {
+    max-height: 280px;
+    margin-top: 16px;
+    overflow-y: auto;
+  }
+  .telemetry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    background: rgba(14, 20, 36, 0.9);
+    border-bottom: 1px solid var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-3);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .telemetry-header .lang { color: var(--gold); }
+  .telemetry-code {
+    margin: 0;
+    padding: 14px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--ink);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .telemetry-code .keyword { color: var(--cyan); }
+  .telemetry-code .function { color: var(--gold); }
+  .telemetry-code .string { color: #a5d6a7; }
+  .telemetry-code .comment { color: var(--ink-3); font-style: italic; }
+
+  /* anamorphic cursor ring enhancement */
+  .cursor-ring.hover {
+    width: 68px;
+    height: 68px;
+    background: var(--gold-glow);
+    border-color: var(--gold);
+    box-shadow: 0 0 20px rgba(232, 211, 158, 0.3), inset 0 0 12px rgba(127, 200, 216, 0.2);
+  }
 </style>
 </head>
 <body>
+
+<canvas id="cinema-canvas" aria-hidden="true"></canvas>
+
+<!-- VIEWFINDER SCENE REEL INDEX -->
+<div class="viewfinder-reel" id="viewfinder-reel" aria-label="Scene Index">
+  <a href="#about" class="vf-item" aria-label="Scene 01: About"><span class="vf-num">01</span><span class="vf-bar"></span><span class="vf-label">About</span></a>
+  <a href="#portrait" class="vf-item" aria-label="Scene 02: Portrait"><span class="vf-num">02</span><span class="vf-bar"></span><span class="vf-label">Portrait</span></a>
+  <a href="#deployed" class="vf-item" aria-label="Scene 03: Deployed"><span class="vf-num">03</span><span class="vf-bar"></span><span class="vf-label">Deployed</span></a>
+  <a href="#work" class="vf-item" aria-label="Scene 04: Projects"><span class="vf-num">04</span><span class="vf-bar"></span><span class="vf-label">Projects</span></a>
+  <a href="#experience" class="vf-item" aria-label="Scene 05: Experience"><span class="vf-num">05</span><span class="vf-bar"></span><span class="vf-label">Experience</span></a>
+  <a href="#skills" class="vf-item" aria-label="Scene 06: Stack"><span class="vf-num">06</span><span class="vf-bar"></span><span class="vf-label">Stack</span></a>
+  <a href="#education" class="vf-item" aria-label="Scene 07: Education"><span class="vf-num">07</span><span class="vf-bar"></span><span class="vf-label">Education</span></a>
+  <a href="#contact" class="vf-item" aria-label="Scene 08: Contact"><span class="vf-num">08</span><span class="vf-bar"></span><span class="vf-label">Contact</span></a>
+</div>
 
 <a href="#main" class="skip-link">Skip to content</a>
 
@@ -1116,8 +1317,9 @@
   <div class="hero-bg"></div>
   <div class="hero-grain"></div>
   <div class="hero-inner wrap">
+
+
     <div class="hero-eyebrow" data-reveal>
-      <span class="pulse"></span>
       Available for freelance · Yerevan, Armenia
     </div>
 
@@ -1309,6 +1511,24 @@
           </div>
           <div class="arrow" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 17 17 7M9 7h8v8"/></svg></div>
         </a>
+        <div style="padding: 0 0 24px 0;">
+          <button type="button" class="telemetry-btn mono" data-telemetry="tel-hypercube">
+            <span>Inspect Code / Telemetry</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="telemetry-drawer" id="tel-hypercube">
+            <div class="telemetry-header">
+              <span>HypercubeProjection.ts</span>
+              <span class="lang">Vue 3 · Three.js</span>
+            </div>
+            <pre class="telemetry-code"><code><span class="comment">// 4D -&gt; 3D Stereographic Projection Kernel (BSc Thesis)</span>
+<span class="keyword">function</span> <span class="function">project4Dto3D</span>(point4D: <span class="string">number[]</span>, distance = <span class="string">2.5</span>): THREE.Vector3 {
+  <span class="keyword">const</span> [x, y, z, w] = point4D;
+  <span class="keyword">const</span> scale = distance / (distance - w);
+  <span class="keyword">return new</span> THREE.<span class="function">Vector3</span>(x * scale, y * scale, z * scale);
+}</code></pre>
+          </div>
+        </div>
       </article>
 
       <article class="work-card" data-reveal>
@@ -1334,6 +1554,25 @@
           </div>
           <div class="arrow" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 17 17 7M9 7h8v8"/></svg></div>
         </a>
+        <div style="padding: 0 0 24px 0;">
+          <button type="button" class="telemetry-btn mono" data-telemetry="tel-signal">
+            <span>Inspect Code / Telemetry</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="telemetry-drawer" id="tel-signal">
+            <div class="telemetry-header">
+              <span>chart_analyzer.py</span>
+              <span class="lang">FastAPI · Vision LLM</span>
+            </div>
+            <pre class="telemetry-code"><code><span class="comment"># Headless Vision-LLM Trading Signal Pipeline</span>
+<span class="keyword">async def</span> <span class="function">analyze_chart</span>(symbol: <span class="string">str</span>, timeframe: <span class="string">str</span>) -&gt; TradeSignal:
+    screenshot = <span class="keyword">await</span> <span class="function">capture_tradingview_chart</span>(symbol, timeframe)
+    analysis = <span class="keyword">await</span> vision_llm.<span class="function">predict</span>(image=screenshot, prompt=PROMPT)
+    <span class="keyword">if</span> analysis.confidence &gt; <span class="string">0.82</span>:
+        <span class="keyword">await</span> telegram_bot.<span class="function">send_signal</span>(analysis)
+    <span class="keyword">return</span> analysis</code></pre>
+          </div>
+        </div>
       </article>
     </div>
   </div>
@@ -1661,6 +1900,190 @@
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
   })();
+
+  // ---------- Cinema of Code: Projector Canvas & Floating Syntax Dust ----------
+  (function () {
+    const canvas = document.getElementById('cinema-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    window.addEventListener('resize', () => {
+      width = (canvas.width = window.innerWidth);
+      height = (canvas.height = window.innerHeight);
+    });
+
+    const tokens = ['fn()', '0x4F', '=>', 'λ', 'scikit', 'Laravel', 'Vue 3', 'Filament', 'Three.js', 'FastAPI', '::', 'CSRF', '01', 'async', 'const', '0x7A', 'SELECT'];
+    const particles = Array.from({ length: 32 }, () => ({
+      text: tokens[Math.floor(Math.random() * tokens.length)],
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: -0.2 - Math.random() * 0.4,
+      opacity: 0.1 + Math.random() * 0.25,
+      color: Math.random() > 0.4 ? '#e8d39e' : '#7fc8d8',
+    }));
+
+    let mouseX = width / 2;
+    let mouseY = height / 2;
+    window.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Subtle radial projector beam glow from cursor
+      const bgGlow = ctx.createRadialGradient(mouseX, mouseY, 10, mouseX, mouseY, 450);
+      bgGlow.addColorStop(0, 'rgba(232, 211, 158, 0.04)');
+      bgGlow.addColorStop(0.5, 'rgba(127, 200, 216, 0.02)');
+      bgGlow.addColorStop(1, 'rgba(7, 10, 20, 0)');
+      ctx.fillStyle = bgGlow;
+      ctx.fillRect(0, 0, width, height);
+
+      // Render floating code particles
+      ctx.font = '11px "JetBrains Mono", monospace';
+      particles.forEach((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Mouse proximity reaction (dust displacement in projector beam)
+        const dx = mouseX - p.x;
+        const dy = mouseY - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 140) {
+          const angle = Math.atan2(dy, dx);
+          p.x -= Math.cos(angle) * 0.6;
+          p.y -= Math.sin(angle) * 0.6;
+        }
+
+        if (p.y < -20) {
+          p.y = height + 20;
+          p.x = Math.random() * width;
+        }
+        if (p.x < -20) p.x = width + 20;
+        if (p.x > width + 20) p.x = -20;
+
+        ctx.globalAlpha = p.opacity;
+        ctx.fillStyle = p.color;
+        ctx.fillText(p.text, p.x, p.y);
+      });
+
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
+
+  // ---------- Slate HUD Clock Ticker ----------
+  (function () {
+    const timeEl = document.getElementById('slate-time');
+    if (!timeEl) return;
+    let seconds = 18;
+    setInterval(() => {
+      seconds++;
+      const hrs = String(Math.floor(seconds / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+      const secs = String(seconds % 60).padStart(2, '0');
+      timeEl.textContent = `${hrs}:${mins}:${secs}`;
+    }, 1000);
+  })();
+
+  // ---------- Code Cipher Text Decoder ----------
+  (function () {
+    const glyphs = '#%&@$<>/{}=~*+?01';
+    function scramble(el) {
+      const originalText = el.getAttribute('data-original-text') || el.textContent.trim();
+      el.setAttribute('data-original-text', originalText);
+      let iteration = 0;
+      clearInterval(el._cipherTimer);
+      el._cipherTimer = setInterval(() => {
+        el.textContent = originalText
+          .split('')
+          .map((char, index) => {
+            if (char === ' ' || index < iteration) return originalText[index];
+            return glyphs[Math.floor(Math.random() * glyphs.length)];
+          })
+          .join('');
+
+        if (iteration >= originalText.length) {
+          clearInterval(el._cipherTimer);
+          el.textContent = originalText;
+        }
+        iteration += 1 / 2;
+      }, 30);
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          scramble(entry.target);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.5 });
+
+    document.querySelectorAll('.section-eyebrow, [data-cipher]').forEach((el) => {
+      observer.observe(el);
+      el.addEventListener('mouseenter', () => scramble(el));
+    });
+  })();
+
+  // ---------- Card Spotlight & 3D Tilt ----------
+  document.querySelectorAll('.dep-card, .work-card, .skill-col').forEach((card) => {
+    card.addEventListener('mousemove', (e) => {
+      const r = card.getBoundingClientRect();
+      const x = e.clientX - r.left;
+      const y = e.clientY - r.top;
+      card.style.setProperty('--spotlight-x', `${x}px`);
+      card.style.setProperty('--spotlight-y', `${y}px`);
+      card.style.setProperty('--spotlight-opacity', '1');
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.setProperty('--spotlight-opacity', '0');
+    });
+  });
+
+  // ---------- Viewfinder Scene Reel Scroll Tracker ----------
+  (function () {
+    const reel = document.getElementById('viewfinder-reel');
+    if (!reel) return;
+    const items = reel.querySelectorAll('.vf-item');
+    const sections = document.querySelectorAll('section[id], header[id]');
+
+    window.addEventListener('scroll', () => {
+      let currentId = '';
+      const scrollPos = window.scrollY + window.innerHeight * 0.35;
+      sections.forEach((sec) => {
+        if (scrollPos >= sec.offsetTop) {
+          currentId = sec.getAttribute('id');
+        }
+      });
+      items.forEach((item) => {
+        const target = item.getAttribute('href').replace('#', '');
+        if (target === currentId) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
+    });
+  })();
+
+  // ---------- Telemetry Drawer Toggle ----------
+  document.querySelectorAll('.telemetry-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetId = btn.getAttribute('data-telemetry');
+      const drawer = document.getElementById(targetId);
+      if (!drawer) return;
+      const isOpen = drawer.classList.toggle('is-open');
+      btn.classList.toggle('is-active', isOpen);
+      btn.querySelector('span').textContent = isOpen ? 'Close Telemetry' : 'Inspect Code / Telemetry';
+    });
+  });
 </script>
 </body>
 </html>
