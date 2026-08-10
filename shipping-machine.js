@@ -1102,36 +1102,279 @@
     };
   }
 
-  /* ---------- Hero (intro) scene group — the universe as a whole ---------- */
-  // We add a soft starfield to give the world depth
-  function buildStarfield(group) {
-    const count = isMobile ? 240 : 480;
-    const geo = new THREE.BufferGeometry();
-    const pos = new Float32Array(count * 3);
-    const col = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      const r = 18 + Math.random() * 28;
+  /* ---------- Atmospheric Nebula Background Layer ---------- */
+  function buildAtmosphereNebula() {
+    const geo = new THREE.PlaneGeometry(120, 70);
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uMouse: { value: new THREE.Vector2(0, 0) },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec2 uMouse;
+        varying vec2 vUv;
+
+        float hash(vec2 p) {
+          p = fract(p * vec2(123.34, 456.21));
+          p += dot(p, p + 45.32);
+          return fract(p.x * p.y);
+        }
+        float noise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          float a = hash(i);
+          float b = hash(i + vec2(1.0, 0.0));
+          float c = hash(i + vec2(0.0, 1.0));
+          float d = hash(i + vec2(1.0, 1.0));
+          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+        }
+
+        void main() {
+          vec2 st = vUv - vec2(0.5);
+          st.x *= 1.6;
+          vec2 m = uMouse * 0.08;
+          float dist = length(st - m);
+
+          float n = noise(st * 3.0 + vec2(uTime * 0.04, uTime * 0.03));
+          float n2 = noise(st * 6.0 - vec2(uTime * 0.02));
+          float combinedNoise = mix(n, n2, 0.4);
+
+          vec3 bgDark = vec3(0.027, 0.039, 0.078);
+          vec3 goldGlow = vec3(0.18, 0.14, 0.08);
+          vec3 cyanGlow = vec3(0.06, 0.12, 0.16);
+
+          float falloff = exp(-dist * 2.2) * (0.8 + 0.3 * combinedNoise);
+          vec3 col = mix(bgDark, goldGlow, falloff * 0.5);
+          col = mix(col, cyanGlow, (1.0 - falloff) * 0.35 * combinedNoise);
+
+          gl_FragColor = vec4(col, 0.95);
+        }
+      `,
+      depthWrite: false,
+      depthTest: false,
+      transparent: true,
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(0, 0, -35);
+    SCENE.add(mesh);
+
+    return {
+      update(time, mouseX, mouseY) {
+        mat.uniforms.uTime.value = time;
+        mat.uniforms.uMouse.value.set(mouseX, mouseY);
+      }
+    };
+  }
+
+  /* ---------- Perspective PCB Architectural Grid Floor ---------- */
+  function buildPerspectiveGridFloor() {
+    const group = new THREE.Group();
+
+    const geo = new THREE.PlaneGeometry(70, 70, 1, 1);
+    const mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uMouse: { value: new THREE.Vector2(0, 0) },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        void main() {
+          vUv = uv;
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPos = worldPosition.xyz;
+          gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec2 uMouse;
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+
+        float gridLines(vec2 st, float scale) {
+          vec2 grid = abs(fract(st * scale - 0.5) - 0.5) / fwidth(st * scale);
+          float line = min(grid.x, grid.y);
+          return 1.0 - min(line, 1.0);
+        }
+
+        void main() {
+          vec2 st = vUv * 35.0;
+          float mainGrid = gridLines(st, 1.0) * 0.7;
+          float subGrid  = gridLines(st, 4.0) * 0.25;
+
+          float dist = length(vUv - vec2(0.5));
+          float alpha = exp(-dist * 4.2);
+
+          float pulseX = smoothstep(0.02, 0.0, abs(sin(vWorldPos.x * 0.4 + uTime * 1.5)));
+          float pulseZ = smoothstep(0.02, 0.0, abs(cos(vWorldPos.z * 0.4 + uTime * 1.2)));
+          float pulse = (pulseX + pulseZ) * 0.4;
+
+          vec3 gold = vec3(0.91, 0.82, 0.62);
+          vec3 cyan = vec3(0.498, 0.784, 0.847);
+          vec3 lineCol = mix(gold, cyan, sin(vWorldPos.x * 0.2 + uTime) * 0.5 + 0.5);
+
+          vec3 finalColor = lineCol * (mainGrid + subGrid + pulse);
+          float finalOpacity = alpha * (mainGrid + subGrid + pulse * 0.8) * 0.35;
+
+          gl_FragColor = vec4(finalColor, finalOpacity);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = -2.5;
+    group.add(mesh);
+
+    const ringGeo = new THREE.RingGeometry(10.8, 11.0, 96);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xe8d39e,
+      transparent: true,
+      opacity: 0.18,
+      side: THREE.DoubleSide,
+    });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.rotation.x = -Math.PI / 2;
+    ringMesh.position.y = -2.49;
+    group.add(ringMesh);
+
+    SCENE.add(group);
+
+    return {
+      ring: ringMesh,
+      update(time, mouseX, mouseY) {
+        mat.uniforms.uTime.value = time;
+        mat.uniforms.uMouse.value.set(mouseX, mouseY);
+      }
+    };
+  }
+
+  /* ---------- 3-Tier Multi-Layer GPU Particle Engine ---------- */
+  function buildMultiLayerParticles() {
+    const group = new THREE.Group();
+
+    // Tier 1: Deep Cosmos Starfield
+    const deepCount = isMobile ? 200 : 450;
+    const deepGeo = new THREE.BufferGeometry();
+    const deepPos = new Float32Array(deepCount * 3);
+    const deepCol = new Float32Array(deepCount * 3);
+    for (let i = 0; i < deepCount; i++) {
+      const r = 20 + Math.random() * 30;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos((Math.random() * 2) - 1);
-      pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-      pos[i * 3 + 2] = r * Math.cos(phi) - 8;
+      deepPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      deepPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      deepPos[i * 3 + 2] = r * Math.cos(phi) - 12;
       const c = Math.random() > 0.4 ? COLOR.gold : COLOR.cyan;
-      col[i * 3] = c.r;
-      col[i * 3 + 1] = c.g;
-      col[i * 3 + 2] = c.b;
+      deepCol[i * 3] = c.r; deepCol[i * 3 + 1] = c.g; deepCol[i * 3 + 2] = c.b;
     }
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    const mat = new THREE.PointsMaterial({
-      size: 0.06,
+    deepGeo.setAttribute('position', new THREE.BufferAttribute(deepPos, 3));
+    deepGeo.setAttribute('color', new THREE.BufferAttribute(deepCol, 3));
+    const deepMat = new THREE.PointsMaterial({
+      size: 0.05,
       vertexColors: true,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.45,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     });
-    return new THREE.Points(geo, mat);
+    const deepPoints = new THREE.Points(deepGeo, deepMat);
+    group.add(deepPoints);
+
+    // Tier 2: Midground Drifting Embers (GPU Animated Vertex Shader)
+    const emberCount = isMobile ? 120 : 250;
+    const emberGeo = new THREE.BufferGeometry();
+    const emberPos = new Float32Array(emberCount * 3);
+    const emberSeed = new Float32Array(emberCount * 3);
+    const emberColor = new Float32Array(emberCount * 3);
+
+    for (let i = 0; i < emberCount; i++) {
+      emberPos[i * 3] = (Math.random() - 0.5) * 32;
+      emberPos[i * 3 + 1] = (Math.random() - 0.5) * 16;
+      emberPos[i * 3 + 2] = -12 + Math.random() * 18;
+
+      emberSeed[i * 3] = Math.random();
+      emberSeed[i * 3 + 1] = Math.random();
+      emberSeed[i * 3 + 2] = 0.5 + Math.random() * 1.5;
+
+      const c = Math.random() > 0.35 ? COLOR.gold : COLOR.cyan;
+      emberColor[i * 3] = c.r; emberColor[i * 3 + 1] = c.g; emberColor[i * 3 + 2] = c.b;
+    }
+    emberGeo.setAttribute('position', new THREE.BufferAttribute(emberPos, 3));
+    emberGeo.setAttribute('aSeed', new THREE.BufferAttribute(emberSeed, 3));
+    emberGeo.setAttribute('aColor', new THREE.BufferAttribute(emberColor, 3));
+
+    const emberMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uMouse: { value: new THREE.Vector2(0, 0) },
+      },
+      vertexShader: `
+        uniform float uTime;
+        uniform vec2 uMouse;
+        attribute vec3 aSeed;
+        attribute vec3 aColor;
+        varying vec3 vColor;
+        varying float vAlpha;
+
+        void main() {
+          vColor = aColor;
+          vec3 pos = position;
+
+          float t = uTime * 0.4 + aSeed.x * 62.8;
+          pos.y += mod(uTime * (0.2 + aSeed.y * 0.3), 16.0) - 8.0;
+          pos.x += sin(t * 0.7) * 0.4 + uMouse.x * 1.2 * (aSeed.z * 0.5);
+          pos.z += cos(t * 0.5) * 0.3 + uMouse.y * 1.0 * (aSeed.z * 0.5);
+
+          vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+          gl_PointSize = aSeed.z * (180.0 / -mvPos.z);
+          gl_Position = projectionMatrix * mvPos;
+
+          vAlpha = smoothstep(0.0, 0.2, (1.0 - abs(pos.y / 8.0)));
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vColor;
+        varying float vAlpha;
+        void main() {
+          float dist = length(gl_PointCoord - vec2(0.5));
+          if (dist > 0.5) discard;
+          float particleGlow = pow(1.0 - dist * 2.0, 2.0);
+          gl_FragColor = vec4(vColor, particleGlow * vAlpha * 0.65);
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const emberPoints = new THREE.Points(emberGeo, emberMat);
+    group.add(emberPoints);
+
+    SCENE.add(group);
+
+    return {
+      update(dt, time, mouseX, mouseY) {
+        deepPoints.rotation.y = time * 0.015;
+        deepPoints.rotation.x = Math.sin(time * 0.03) * 0.03;
+        emberMat.uniforms.uTime.value = time;
+        emberMat.uniforms.uMouse.value.set(mouseX, mouseY);
+      }
+    };
   }
 
   /* ============================================================================
@@ -1414,33 +1657,9 @@
     };
   }
 
-  const starfield = buildStarfield();
-  SCENE.add(starfield);
-
-  // The "factory" baseplate — a subtle horizontal disc that ties the three scenes together
-  const baseplateGeo = new THREE.CircleGeometry(11, 64);
-  const baseplate = new THREE.Mesh(
-    baseplateGeo,
-    new THREE.MeshBasicMaterial({
-      color: 0x0e1424,
-      transparent: true,
-      opacity: 0.4,
-      side: THREE.DoubleSide,
-    })
-  );
-  baseplate.rotation.x = -Math.PI / 2;
-  baseplate.position.y = -2.5;
-  SCENE.add(baseplate);
-
-  // a thin ring around the baseplate
-  const ringGeo = new THREE.RingGeometry(10.8, 11.0, 96);
-  const ring = new THREE.Mesh(
-    ringGeo,
-    new THREE.MeshBasicMaterial({ color: 0xe8d39e, transparent: true, opacity: 0.18, side: THREE.DoubleSide })
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = -2.49;
-  SCENE.add(ring);
+  const atmosphereNebula = buildAtmosphereNebula();
+  const gridFloor = buildPerspectiveGridFloor();
+  const multiLayerParticles = buildMultiLayerParticles();
 
   // build three scenes + hypercube engine, grouped under a single worldGroup
   const worldGroup = new THREE.Group();
@@ -1624,13 +1843,13 @@
     cicdScene.update(dt, time, cicdEm);
     hypercubeScene.update(dt, time, mouseX, mouseY);
 
-    // starfield drift
-    starfield.rotation.y = time * 0.02;
-    starfield.rotation.x = Math.sin(time * 0.05) * 0.05;
+    // update background environment
+    atmosphereNebula.update(time, mouseX, mouseY);
+    gridFloor.update(time, mouseX, mouseY);
+    multiLayerParticles.update(dt, time, mouseX, mouseY);
 
-    // baseplate ring pulse
     const ringPulse = 1 + Math.sin(time * 0.6) * 0.02;
-    ring.scale.setScalar(ringPulse);
+    if (gridFloor.ring) gridFloor.ring.scale.setScalar(ringPulse);
 
     renderer.render(SCENE, camera);
   }
