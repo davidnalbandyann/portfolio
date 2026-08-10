@@ -410,7 +410,7 @@
       ctx.beginPath(); ctx.ellipse(0, 0, 26, 6, 0, 0, Math.PI * 2); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(-26, 0); ctx.lineTo(-26, 14); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(26, 0); ctx.lineTo(26, 14); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(0, 14, 26, 6, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(0, 14, 26, 6, 0, 0, Math.PI * 2); ctx.stroke();
     },
     db: (ctx) => {
       // the iconic database drum: a cylinder seen slightly from above
@@ -525,6 +525,37 @@
     mesh.userData.from = a.clone();
     mesh.userData.to = b.clone();
     return mesh;
+  }
+
+  /* ---------- SCENE 01 · Git Scene — "Parallel Universes" ---------- */
+  function buildGitScene(group) {
+    const ROOT = new THREE.Group();
+    ROOT.position.set(-6, 0, 0);
+    group.add(ROOT);
+
+    const mainPath = createFlowPath(new THREE.Vector3(-2, 0, 0), new THREE.Vector3(2, 0, 0), COLOR.gold, { thickness: 0.02, opacity: 0.8 });
+    ROOT.add(mainPath);
+
+    const featureArc = createFlowPath(new THREE.Vector3(-1.2, 0, 0), new THREE.Vector3(1.2, 0, 0), COLOR.cyan, { bow: 0.8, sag: 0.5, thickness: 0.015 });
+    ROOT.add(featureArc);
+
+    const commit1 = createNode({ radius: 0.18, color: 0xe8d39e, shape: 'octa' });
+    commit1.position.set(-1.5, 0, 0);
+    ROOT.add(commit1);
+
+    const commit2 = createNode({ radius: 0.18, color: 0x7fc8d8, shape: 'octa' });
+    commit2.position.set(0, 0.6, 0.4);
+    ROOT.add(commit2);
+
+    const commit3 = createNode({ radius: 0.2, color: 0xe8d39e, shape: 'octa' });
+    commit3.position.set(1.5, 0, 0);
+    ROOT.add(commit3);
+
+    return {
+      update(dt, time, emphasis = 1) {
+        ROOT.rotation.y = time * 0.1 * emphasis;
+      },
+    };
   }
 
   /* ---------- SCENE 02 · System Design — "The Request Odyssey" ----------
@@ -1103,6 +1134,286 @@
     return new THREE.Points(geo, mat);
   }
 
+  /* ============================================================================
+   *  4D HYPERCUBE (TESSERACT) ENGINE
+   *  Mathematical visualization of an n-dimensional hypercube in 4D space,
+   *  projected dynamically down to 3D with double-rotation matrices (XW + YZ planes)
+   *  and depth-weighted filament rendering.
+   * ============================================================================ */
+  function buildHypercubeEngine(parent) {
+    const group = new THREE.Group();
+    group.position.set(0, 0.8, 1.0); // Prominent hero center positioning
+    parent.add(group);
+
+    // 16 4D Vertices: (±1, ±1, ±1, ±1)
+    const vertices4D = [];
+    const scale4D = 1.6;
+    for (let i = 0; i < 16; i++) {
+      vertices4D.push([
+        (i & 1 ? 1 : -1) * scale4D,
+        (i & 2 ? 1 : -1) * scale4D,
+        (i & 4 ? 1 : -1) * scale4D,
+        (i & 8 ? 1 : -1) * scale4D,
+      ]);
+    }
+
+    // 32 4D Edges (pairs of vertex indices with Hamming distance == 1)
+    const edges = [];
+    for (let i = 0; i < 16; i++) {
+      for (let j = i + 1; j < 16; j++) {
+        const diff = i ^ j;
+        if ((diff & (diff - 1)) === 0) {
+          edges.push([i, j]);
+        }
+      }
+    }
+
+    const nodeTypes = [
+      { name: 'VUE 3', color: 0x7fc8d8, shape: 'tetra' },
+      { name: 'LARAVEL 13', color: 0xe8d39e, shape: 'box' },
+      { name: 'FILAMENT', color: 0xe8d39e, shape: 'plane' },
+      { name: 'FASTAPI', color: 0x7fc8d8, shape: 'cone' },
+      { name: 'AI VISION', color: 0x7fc8d8, shape: 'icosa' },
+      { name: 'HYPERCUBE', color: 0xe8d39e, shape: 'tesseract_mini' },
+      { name: 'POSTGRES', color: 0x7fc8d8, shape: 'cylinder' },
+      { name: 'CI / CD', color: 0xe8d39e, shape: 'gear' },
+      { name: 'GIT DAG', color: 0xe8d39e, shape: 'octa' },
+      { name: 'STATS', color: 0x7fc8d8, shape: 'torus' },
+      { name: 'STREAM', color: 0x7fc8d8, shape: 'sphere_ring' },
+      { name: 'REDIS', color: 0xe8d39e, shape: 'disc_stack' },
+      { name: 'SCIKIT', color: 0x7fc8d8, shape: 'tetra_scatter' },
+      { name: 'PLAYWRIGHT', color: 0x7fc8d8, shape: 'frame' },
+      { name: 'GATEWAY', color: 0xe8d39e, shape: 'portal' },
+      { name: 'SHIPPED', color: 0xe8d39e, shape: 'starburst' },
+    ];
+
+    function createDistinctNode(cfg) {
+      const nodeGrp = new THREE.Group();
+      let geo;
+      const mat = new THREE.MeshBasicMaterial({
+        color: cfg.color,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.95,
+      });
+
+      if (cfg.shape === 'box') {
+        geo = new THREE.BoxGeometry(0.24, 0.24, 0.24);
+        nodeGrp.add(new THREE.Mesh(geo, mat));
+      } else if (cfg.shape === 'cylinder') {
+        geo = new THREE.CylinderGeometry(0.13, 0.13, 0.26, 12);
+        nodeGrp.add(new THREE.Mesh(geo, mat));
+      } else if (cfg.shape === 'torus') {
+        geo = new THREE.TorusGeometry(0.14, 0.05, 8, 16);
+        nodeGrp.add(new THREE.Mesh(geo, mat));
+      } else if (cfg.shape === 'icosa') {
+        geo = new THREE.IcosahedronGeometry(0.18, 0);
+        nodeGrp.add(new THREE.Mesh(geo, mat));
+      } else if (cfg.shape === 'cone') {
+        geo = new THREE.ConeGeometry(0.14, 0.28, 8);
+        nodeGrp.add(new THREE.Mesh(geo, mat));
+      } else if (cfg.shape === 'tesseract_mini') {
+        const outer = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, 0.24), mat);
+        const inner = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), mat);
+        nodeGrp.add(outer);
+        nodeGrp.add(inner);
+      } else if (cfg.shape === 'disc_stack') {
+        for (let k = -1; k <= 1; k++) {
+          const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 12), mat);
+          disc.position.y = k * 0.08;
+          nodeGrp.add(disc);
+        }
+      } else if (cfg.shape === 'portal') {
+        const ringM = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.03, 8, 24), mat);
+        nodeGrp.add(ringM);
+      } else if (cfg.shape === 'starburst') {
+        const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 1), mat);
+        nodeGrp.add(core);
+      } else if (cfg.shape === 'plane') {
+        const panel = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.24), mat);
+        nodeGrp.add(panel);
+      } else if (cfg.shape === 'gear') {
+        const outerG = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.04, 6, 12), mat);
+        nodeGrp.add(outerG);
+      } else {
+        geo = new THREE.OctahedronGeometry(0.18, 0);
+        nodeGrp.add(new THREE.Mesh(geo, mat));
+      }
+
+      const haloMat = new THREE.SpriteMaterial({
+        map: cfg.color === 0x7fc8d8 ? spriteHaloCyan : SPRITE_HALO,
+        color: cfg.color,
+        transparent: true,
+        opacity: 0.75,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+      const haloSprite = new THREE.Sprite(haloMat);
+      haloSprite.scale.set(1.2, 1.2, 1);
+      nodeGrp.add(haloSprite);
+      nodeGrp.userData.halo = haloSprite;
+
+      const labelSprite = createLabel(cfg.name, cfg.color === 0x7fc8d8 ? '#7fc8d8' : '#e8d39e', 14);
+      labelSprite.position.set(0, -0.34, 0);
+      labelSprite.scale.set(1.4, 0.35, 1);
+      nodeGrp.add(labelSprite);
+
+      return nodeGrp;
+    }
+
+    // 16 Vertex Node Meshes with distinct visual representations
+    const nodeMeshes = [];
+    vertices4D.forEach((v, idx) => {
+      const cfg = nodeTypes[idx % nodeTypes.length];
+      const mesh = createDistinctNode(cfg);
+      group.add(mesh);
+      nodeMeshes.push(mesh);
+    });
+
+    // 32 Edge Lines using LineSegments
+    const lineGeo = new THREE.BufferGeometry();
+    const linePositions = new Float32Array(edges.length * 2 * 3);
+    const lineColors = new Float32Array(edges.length * 2 * 3);
+    lineGeo.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+    lineGeo.setAttribute('color', new THREE.BufferAttribute(lineColors, 3));
+
+    const lineMat = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      linewidth: 2.0,
+    });
+    const lineSegments = new THREE.LineSegments(lineGeo, lineMat);
+    group.add(lineSegments);
+
+    // Floating 4D Light Pulse Packets traversing edges
+    const pulses = [];
+    for (let i = 0; i < 8; i++) {
+      const packet = createPacket(i % 2 === 0 ? 0xe8d39e : 0x7fc8d8, 0.06);
+      group.add(packet);
+      pulses.push({
+        mesh: packet,
+        edgeIdx: Math.floor(Math.random() * edges.length),
+        progress: Math.random(),
+        speed: 0.25 + Math.random() * 0.35,
+      });
+    }
+
+    // 4D Rotation Angles
+    let angleXW = 0;
+    let angleYZ = 0;
+    let angleXY = 0;
+
+    return {
+      update(dt, time, mouseX = 0, mouseY = 0) {
+        // Double rotation in 4D: XW and YZ plane rotations
+        angleXW += dt * (0.35 + mouseX * 0.25);
+        angleYZ += dt * (0.25 + mouseY * 0.25);
+        angleXY += dt * 0.15;
+
+        const cosXW = Math.cos(angleXW), sinXW = Math.sin(angleXW);
+        const cosYZ = Math.cos(angleYZ), sinYZ = Math.sin(angleYZ);
+        const cosXY = Math.cos(angleXY), sinXY = Math.sin(angleXY);
+
+        const dist4D = 3.5; // 4D perspective distance
+        const proj3D = [];
+
+        // Project all 16 vertices from 4D -> 3D
+        for (let i = 0; i < 16; i++) {
+          let [x, y, z, w] = vertices4D[i];
+
+          // Rotation 1: XW plane
+          let x1 = x * cosXW - w * sinXW;
+          let w1 = x * sinXW + w * cosXW;
+
+          // Rotation 2: YZ plane
+          let y1 = y * cosYZ - z * sinYZ;
+          let z1 = y * sinYZ + z * cosYZ;
+
+          // Rotation 3: XY plane (gentle 3D tilt)
+          let x2 = x1 * cosXY - y1 * sinXY;
+          let y2 = x1 * sinXY + y1 * cosXY;
+
+          // 4D Perspective Projection: k = D / (D - w)
+          const k = dist4D / (dist4D - w1);
+          const p3x = x2 * k;
+          const p3y = y2 * k;
+          const p3z = z1 * k;
+
+          proj3D.push({ x: p3x, y: p3y, z: p3z, w: w1, k: k });
+
+          // Update node mesh position and scale
+          const node = nodeMeshes[i];
+          node.position.set(p3x, p3y, p3z);
+          const scale = 0.6 + 0.7 * k;
+          node.scale.setScalar(scale);
+
+          if (node.userData.halo) {
+            node.userData.halo.material.opacity = Math.max(0.35, Math.min(0.95, (w1 + scale4D) / (2 * scale4D)));
+          }
+        }
+
+        // Update 32 edge buffer positions & depth colors
+        const posAttr = lineGeo.attributes.position;
+        const colAttr = lineGeo.attributes.color;
+
+        const colorGold = COLOR.gold;
+        const colorCyan = COLOR.cyan;
+
+        for (let e = 0; e < edges.length; e++) {
+          const [i, j] = edges[e];
+          const pA = proj3D[i];
+          const pB = proj3D[j];
+
+          const idxA = e * 6;
+          posAttr.array[idxA]     = pA.x;
+          posAttr.array[idxA + 1] = pA.y;
+          posAttr.array[idxA + 2] = pA.z;
+
+          posAttr.array[idxA + 3] = pB.x;
+          posAttr.array[idxA + 4] = pB.y;
+          posAttr.array[idxA + 5] = pB.z;
+
+          // Lerp edge vertex colors according to 4D depth w
+          const tA = Math.max(0, Math.min(1, (pA.w + scale4D) / (2 * scale4D)));
+          const tB = Math.max(0, Math.min(1, (pB.w + scale4D) / (2 * scale4D)));
+
+          colAttr.array[idxA]     = THREE.MathUtils.lerp(colorGold.r, colorCyan.r, tA);
+          colAttr.array[idxA + 1] = THREE.MathUtils.lerp(colorGold.g, colorCyan.g, tA);
+          colAttr.array[idxA + 2] = THREE.MathUtils.lerp(colorGold.b, colorCyan.b, tA);
+
+          colAttr.array[idxA + 3] = THREE.MathUtils.lerp(colorGold.r, colorCyan.r, tB);
+          colAttr.array[idxA + 4] = THREE.MathUtils.lerp(colorGold.g, colorCyan.g, tB);
+          colAttr.array[idxA + 5] = THREE.MathUtils.lerp(colorGold.b, colorCyan.b, tB);
+        }
+
+        posAttr.needsUpdate = true;
+        colAttr.needsUpdate = true;
+
+        // Update data packets traveling along hypercube edges
+        pulses.forEach((p) => {
+          p.progress += dt * p.speed;
+          if (p.progress >= 1) {
+            p.progress = 0;
+            p.edgeIdx = Math.floor(Math.random() * edges.length);
+          }
+          const [i, j] = edges[p.edgeIdx];
+          const pA = proj3D[i];
+          const pB = proj3D[j];
+          const curX = THREE.MathUtils.lerp(pA.x, pB.x, p.progress);
+          const curY = THREE.MathUtils.lerp(pA.y, pB.y, p.progress);
+          const curZ = THREE.MathUtils.lerp(pA.z, pB.z, p.progress);
+          p.mesh.position.set(curX, curY, curZ);
+        });
+
+        // Gentle floating breathing tilt
+        group.rotation.y = time * 0.1 + mouseX * 0.25;
+        group.rotation.x = Math.sin(time * 0.18) * 0.1 + mouseY * 0.2;
+      },
+    };
+  }
+
   const starfield = buildStarfield();
   SCENE.add(starfield);
 
@@ -1131,13 +1442,14 @@
   ring.position.y = -2.49;
   SCENE.add(ring);
 
-  // build three scenes, grouped under a single worldGroup
+  // build three scenes + hypercube engine, grouped under a single worldGroup
   const worldGroup = new THREE.Group();
   SCENE.add(worldGroup);
 
   const gitScene = buildGitScene(worldGroup);
   const systemScene = buildSystemScene(worldGroup);
   const cicdScene = buildCICDScene(worldGroup);
+  const hypercubeScene = buildHypercubeEngine(worldGroup);
 
   // ----- camera focus controller -----
   const FOCUS = {
@@ -1222,6 +1534,7 @@
     gitScene.update(0, t0, 0.6);
     systemScene.update(0, t0, 0.6);
     cicdScene.update(0, t0, 0.6);
+    hypercubeScene.update(0, t0, 0, 0);
     camera.position.set(0, 0, 14);
     camera.lookAt(0, 0, 0);
     renderer.render(SCENE, camera);
@@ -1309,6 +1622,7 @@
     gitScene.update(dt, time, gitEm);
     systemScene.update(dt, time, sysEm);
     cicdScene.update(dt, time, cicdEm);
+    hypercubeScene.update(dt, time, mouseX, mouseY);
 
     // starfield drift
     starfield.rotation.y = time * 0.02;
